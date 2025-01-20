@@ -34,8 +34,6 @@ inputs:
     description: 'The description of the issue'
     required: true
     default: ''
-  assignee:
-    description: 'The assignee of the issue'
 runs:
   using: 'node20'
   main: 'dist/index.js'

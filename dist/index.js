@@ -33081,7 +33081,6 @@ async function run() {
     const database = core.getInput('database', { required: true });
     const title = core.getInput('title', { required: true });
     const description = core.getInput('description', { required: true });
-    const assignee = core.getInput('assignee');
     const extraHeaders = core.getInput('headers');
     headers = extraHeaders ? JSON.parse(extraHeaders) : {};
     headers = {
@@ -33112,7 +33111,7 @@ async function run() {
         // Create rollout
         let rollout = await createRollout(plan.name);
         // Create issue
-        issue = await createIssue(plan.name, rollout.name, assignee, title, description);
+        issue = await createIssue(plan.name, rollout.name, title, description);
         if (issue) {
             const issueURL = `${url}/projects/${projectId}/issues/${issue.uid}`;
             core.info('Successfully created issue at ' + issueURL);
@@ -33288,7 +33287,7 @@ async function createSheet(change, title) {
     }
     return createdSheetData;
 }
-async function createIssue(planName, rolloutName, assignee, title, description) {
+async function createIssue(planName, rolloutName, title, description) {
     try {
         const requestBody = {
             approvers: [],
@@ -33297,7 +33296,6 @@ async function createIssue(planName, rolloutName, assignee, title, description) 
             title: title,
             description,
             type: 'DATABASE_CHANGE',
-            assignee,
             plan: planName,
             rollout: rolloutName
         };

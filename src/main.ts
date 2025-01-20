@@ -54,7 +54,6 @@ export async function run(): Promise<void> {
   const database = core.getInput('database', { required: true })
   const title = core.getInput('title', { required: true })
   const description = core.getInput('description', { required: true })
-  const assignee = core.getInput('assignee')
   const extraHeaders: string = core.getInput('headers')
 
   headers = extraHeaders ? JSON.parse(extraHeaders) : {}
@@ -89,13 +88,7 @@ export async function run(): Promise<void> {
     let rollout = await createRollout(plan.name)
 
     // Create issue
-    issue = await createIssue(
-      plan.name,
-      rollout.name,
-      assignee,
-      title,
-      description
-    )
+    issue = await createIssue(plan.name, rollout.name, title, description)
 
     if (issue) {
       const issueURL = `${url}/projects/${projectId}/issues/${issue.uid}`
@@ -333,7 +326,6 @@ async function createSheet(change: Change, title: string): Promise<any> {
 async function createIssue(
   planName: string,
   rolloutName: string,
-  assignee: string,
   title: string,
   description: string
 ): Promise<any> {
@@ -345,7 +337,6 @@ async function createIssue(
       title: title,
       description,
       type: 'DATABASE_CHANGE',
-      assignee,
       plan: planName,
       rollout: rolloutName
     }
