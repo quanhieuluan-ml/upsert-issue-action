@@ -8,7 +8,7 @@ inputs:
   pattern:
     description: 'Glob pattern to match changed files'
     required: true
-    default: '**/*.up.sql'
+    default: '**/*.sql'
   url:
     description: 'The Bytebase URL. Example: https://bytebase.example.com'
     required: true
