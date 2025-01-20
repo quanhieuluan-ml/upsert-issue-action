@@ -33054,13 +33054,22 @@ let headers = {};
 let projectUrl = '';
 // Use a deterministic way to generate the change id and schema version.
 // Thus later we can derive the same id when we want to check the change.
-function generateChangeIdAndSchemaVersion(repo, pr, file) {
-    // filename should follow yyy/<<version>>_xxxx
-    const version = path.basename(file).split('_')[0];
+function generateChangeIdAndSchemaVersionAndChangeType(repo, pr, file) {
+    const { name } = path.parse(file);
+    // filename should follow yyy/<<version>>_xxxx_<<changeType>>.sql
+    const version = name.split('_')[0];
+    let changeType = 'MIGRATE';
+    if (name.endsWith('dml')) {
+        changeType = 'DATA';
+    }
+    else if (name.endsWith('ghost')) {
+        changeType = 'MIGRATE_GHOST';
+    }
     // Replace all non-alphanumeric characters with hyphens
     return {
         id: `ch-${repo}-pr${pr}-${version}`.replace(/[^a-zA-Z0-9]/g, '-'),
-        version
+        version,
+        changeType
     };
 }
 async function run() {
@@ -33143,13 +33152,14 @@ async function collectChanges(githubToken, database, pattern) {
     let changes = [];
     for (const file of sqlFiles) {
         const content = await fs_1.promises.readFile(file);
-        const { id, version } = generateChangeIdAndSchemaVersion(repo, prNumber.toString(), file);
+        const { id, version, changeType } = generateChangeIdAndSchemaVersionAndChangeType(repo, prNumber.toString(), file);
         changes.push({
             id,
             database,
             file,
             content: Buffer.from(content).toString(),
-            schemaVersion: version
+            schemaVersion: version,
+            type: changeType
         });
     }
     return changes;
@@ -33167,7 +33177,7 @@ async function createPlan(changes, title, description) {
                     target: change.database,
                     sheet: createdSheetData.name,
                     schemaVersion: change.schemaVersion,
-                    type: 'MIGRATE'
+                    type: change.type
                 }
             };
             specs.push(spec);

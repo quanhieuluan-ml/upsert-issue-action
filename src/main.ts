@@ -8,6 +8,7 @@ import { createPatch } from 'diff'
 let headers = {}
 let projectUrl = ''
 
+type ChangeType = 'MIGRATE' | 'MIGRATE_GHOST' | 'DATA'
 interface Change {
   // Specify an id so that we can update the change afterwards.
   id: string
@@ -16,21 +17,31 @@ interface Change {
   content: string
   // Extract from the filename. If filename is 123_init.sql, then the version is 123.
   schemaVersion: string
+  type: ChangeType
 }
 
 // Use a deterministic way to generate the change id and schema version.
 // Thus later we can derive the same id when we want to check the change.
-function generateChangeIdAndSchemaVersion(
+function generateChangeIdAndSchemaVersionAndChangeType(
   repo: string,
   pr: string,
   file: string
-): { id: string; version: string } {
-  // filename should follow yyy/<<version>>_xxxx
-  const version = path.basename(file).split('_')[0]
+): { id: string; version: string; changeType: ChangeType } {
+  const { name } = path.parse(file)
+  // filename should follow yyy/<<version>>_xxxx_<<changeType>>.sql
+  const version = name.split('_')[0]
+  let changeType: ChangeType = 'MIGRATE'
+  if (name.endsWith('dml')) {
+    changeType = 'DATA'
+  } else if (name.endsWith('ghost')) {
+    changeType = 'MIGRATE_GHOST'
+  }
+
   // Replace all non-alphanumeric characters with hyphens
   return {
     id: `ch-${repo}-pr${pr}-${version}`.replace(/[^a-zA-Z0-9]/g, '-'),
-    version
+    version,
+    changeType
   }
 }
 
@@ -141,17 +152,19 @@ async function collectChanges(
   let changes: Change[] = []
   for (const file of sqlFiles) {
     const content = await fs.readFile(file)
-    const { id, version } = generateChangeIdAndSchemaVersion(
-      repo,
-      prNumber.toString(),
-      file
-    )
+    const { id, version, changeType } =
+      generateChangeIdAndSchemaVersionAndChangeType(
+        repo,
+        prNumber.toString(),
+        file
+      )
     changes.push({
       id,
       database,
       file,
       content: Buffer.from(content).toString(),
-      schemaVersion: version
+      schemaVersion: version,
+      type: changeType
     })
   }
 
@@ -176,7 +189,7 @@ async function createPlan(
           target: change.database,
           sheet: createdSheetData.name,
           schemaVersion: change.schemaVersion,
-          type: 'MIGRATE'
+          type: change.type
         }
       }
       specs.push(spec)
