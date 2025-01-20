@@ -35,4 +35,55 @@ default change type is schema change.
 | database     | Yes      | N/A           | The name of database. Example: instances/prod-instance/databases/example                  | String |
 | title        | Yes      | N/A           | The title of the issue                                                                    | String |
 | description  | Yes      | ``            | The description of the issue (can be empty)                                               | String |
-| assignee     | Yes      | N/A           | The assignee of the issue                                                                 | String |
+
+## Example
+
+```yaml
+name: Upsert Migration
+
+on:
+  pull_request_review:
+    types: [submitted]
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "**/*.up.sql"
+
+jobs:
+  bytebase-upsert-migration:
+    runs-on: ubuntu-latest
+    # Runs only if PR is approved and target branch is main
+    if: github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'main'
+    env:
+      BYTEBASE_URL: "https://bytebase-ci.zeabur.app"
+      BYTEBASE_SERVICE_ACCOUNT: "ci@service.bytebase.com"
+      PROJECT: "example"
+      DATABASE: "instances/prod-instance/databases/example"
+      ISSUE_TITLE: "[${{ github.repository }}#${{ github.event.pull_request.number }}] ${{ github.event.pull_request.title }}"
+      DESCRIPTION: "Triggered by ${{ github.event.repository.html_url }}/pull/${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}"
+    name: Upsert Migration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to Bytebase
+        id: login
+        uses: bytebase/login-action@0.0.2
+        with:
+          bytebase-url: ${{ env.BYTEBASE_URL }}
+          service-key: ${{ env.BYTEBASE_SERVICE_ACCOUNT }}
+          service-secret: ${{ secrets.BYTEBASE_PASSWORD }}
+      - name: Upsert issue
+        id: upsert
+        uses: bytebase/upsert-issue-action@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: "**/*.sql"
+          url: ${{ env.BYTEBASE_URL }}
+          token: ${{ steps.login.outputs.token }}
+          headers: '{"Accept-Encoding": "deflate, gzip"}'
+          project-id: ${{ env.PROJECT }}
+          database: ${{ env.DATABASE }}
+          title: ${{ env.ISSUE_TITLE }}
+          description: ${{ env.DESCRIPTION }}
+```
