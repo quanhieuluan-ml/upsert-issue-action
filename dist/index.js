@@ -33054,7 +33054,7 @@ let headers = {};
 let projectUrl = '';
 // Use a deterministic way to generate the change id and schema version.
 // Thus later we can derive the same id when we want to check the change.
-function generateChangeIdAndSchemaVersionAndChangeType(repo, pr, file) {
+function generateChangeIdAndSchemaVersionAndChangeType(repo, pr, file, target) {
     const { name } = path.parse(file);
     // filename should follow yyy/<<version>>_xxxx_<<changeType>>.sql
     const version = name.split('_')[0];
@@ -33067,7 +33067,7 @@ function generateChangeIdAndSchemaVersionAndChangeType(repo, pr, file) {
     }
     // Replace all non-alphanumeric characters with hyphens
     return {
-        id: `ch-${repo}-pr${pr}-${version}`.replace(/[^a-zA-Z0-9]/g, '-'),
+        id: `ch-${repo}-pr${pr}-${version}-${target}`.replace(/[^a-zA-Z0-9]/g, '-'),
         version,
         changeType
     };
@@ -33078,7 +33078,7 @@ async function run() {
     const url = core.getInput('url', { required: true });
     const token = core.getInput('token', { required: true });
     const projectId = core.getInput('project-id', { required: true });
-    const database = core.getInput('database', { required: true });
+    const targets = core.getInput('targets', { required: true });
     const title = core.getInput('title', { required: true });
     const description = core.getInput('description', { required: true });
     const extraHeaders = core.getInput('headers');
@@ -33089,7 +33089,7 @@ async function run() {
         ...headers
     };
     projectUrl = `${url}/v1/projects/${projectId}`;
-    const changes = await collectChanges(githubToken, database, pattern);
+    const changes = await collectChanges(githubToken, targets.split(','), pattern);
     let issue = await findIssue(title);
     // If found existing issue, then update if migration script changes.
     // Otherwise, create a new issue.
@@ -33118,8 +33118,7 @@ async function run() {
         }
     }
 }
-run();
-async function collectChanges(githubToken, database, pattern) {
+async function collectChanges(githubToken, targets, pattern) {
     const octokit = github.getOctokit(githubToken);
     const githubContext = github.context;
     const { owner, repo } = githubContext.repo;
@@ -33151,15 +33150,17 @@ async function collectChanges(githubToken, database, pattern) {
     let changes = [];
     for (const file of sqlFiles) {
         const content = await fs_1.promises.readFile(file);
-        const { id, version, changeType } = generateChangeIdAndSchemaVersionAndChangeType(repo, prNumber.toString(), file);
-        changes.push({
-            id,
-            database,
-            file,
-            content: Buffer.from(content).toString(),
-            schemaVersion: version,
-            type: changeType
-        });
+        for (const target of targets) {
+            const { id, version, changeType } = generateChangeIdAndSchemaVersionAndChangeType(repo, prNumber.toString(), file, target);
+            changes.push({
+                id,
+                target: target,
+                file,
+                content: Buffer.from(content).toString(),
+                schemaVersion: version,
+                type: changeType
+            });
+        }
     }
     return changes;
 }
@@ -33173,7 +33174,7 @@ async function createPlan(changes, title, description) {
             const spec = {
                 id: change.id,
                 change_database_config: {
-                    target: change.database,
+                    target: change.target,
                     sheet: createdSheetData.name,
                     schemaVersion: change.schemaVersion,
                     type: change.type
@@ -33270,7 +33271,7 @@ async function listAllIssues(endpoint, title) {
 }
 async function createSheet(change, title) {
     const requestBody = {
-        change: change.database,
+        change: change.target,
         title,
         content: Buffer.from(change.content).toString('base64')
     };
@@ -33356,7 +33357,7 @@ async function updateIssuePlan(issue, changes, title) {
         for (const spec of step.specs) {
             let matchedSpec;
             for (const change of changes) {
-                if (change.database == spec.changeDatabaseConfig.target &&
+                if (change.target == spec.changeDatabaseConfig.target &&
                     change.id == spec.id) {
                     matchedSpec = spec;
                     break;
@@ -33381,7 +33382,7 @@ async function updateIssuePlan(issue, changes, title) {
     for (const step of planData.steps) {
         for (const spec of step.specs) {
             for (const change of changes) {
-                if (change.database == spec.changeDatabaseConfig.target &&
+                if (change.target == spec.changeDatabaseConfig.target &&
                     change.id == spec.id) {
                     const components = spec.changeDatabaseConfig.sheet.split('/');
                     const sheetUid = components[components.length - 1];

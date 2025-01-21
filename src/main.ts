@@ -12,7 +12,7 @@ type ChangeType = 'MIGRATE' | 'MIGRATE_GHOST' | 'DATA'
 interface Change {
   // Specify an id so that we can update the change afterwards.
   id: string
-  database: string
+  target: string
   file: string
   content: string
   // Extract from the filename. If filename is 123_init.sql, then the version is 123.
@@ -25,7 +25,8 @@ interface Change {
 function generateChangeIdAndSchemaVersionAndChangeType(
   repo: string,
   pr: string,
-  file: string
+  file: string,
+  target: string
 ): { id: string; version: string; changeType: ChangeType } {
   const { name } = path.parse(file)
   // filename should follow yyy/<<version>>_xxxx_<<changeType>>.sql
@@ -39,7 +40,7 @@ function generateChangeIdAndSchemaVersionAndChangeType(
 
   // Replace all non-alphanumeric characters with hyphens
   return {
-    id: `ch-${repo}-pr${pr}-${version}`.replace(/[^a-zA-Z0-9]/g, '-'),
+    id: `ch-${repo}-pr${pr}-${version}-${target}`.replace(/[^a-zA-Z0-9]/g, '-'),
     version,
     changeType
   }
@@ -51,7 +52,7 @@ export async function run(): Promise<void> {
   const url = core.getInput('url', { required: true })
   const token = core.getInput('token', { required: true })
   const projectId = core.getInput('project-id', { required: true })
-  const database = core.getInput('database', { required: true })
+  const targets = core.getInput('targets', { required: true })
   const title = core.getInput('title', { required: true })
   const description = core.getInput('description', { required: true })
   const extraHeaders: string = core.getInput('headers')
@@ -65,7 +66,7 @@ export async function run(): Promise<void> {
 
   projectUrl = `${url}/v1/projects/${projectId}`
 
-  const changes = await collectChanges(githubToken, database, pattern)
+  const changes = await collectChanges(githubToken, targets.split(','), pattern)
 
   let issue = await findIssue(title)
   // If found existing issue, then update if migration script changes.
@@ -97,11 +98,9 @@ export async function run(): Promise<void> {
   }
 }
 
-run()
-
 async function collectChanges(
   githubToken: string,
-  database: string,
+  targets: string[],
   pattern: string
 ): Promise<Change[]> {
   const octokit = github.getOctokit(githubToken)
@@ -145,20 +144,23 @@ async function collectChanges(
   let changes: Change[] = []
   for (const file of sqlFiles) {
     const content = await fs.readFile(file)
-    const { id, version, changeType } =
-      generateChangeIdAndSchemaVersionAndChangeType(
-        repo,
-        prNumber.toString(),
-        file
-      )
-    changes.push({
-      id,
-      database,
-      file,
-      content: Buffer.from(content).toString(),
-      schemaVersion: version,
-      type: changeType
-    })
+    for (const target of targets) {
+      const { id, version, changeType } =
+        generateChangeIdAndSchemaVersionAndChangeType(
+          repo,
+          prNumber.toString(),
+          file,
+          target
+        )
+      changes.push({
+        id,
+        target: target,
+        file,
+        content: Buffer.from(content).toString(),
+        schemaVersion: version,
+        type: changeType
+      })
+    }
   }
 
   return changes
@@ -179,7 +181,7 @@ async function createPlan(
       const spec = {
         id: change.id,
         change_database_config: {
-          target: change.database,
+          target: change.target,
           sheet: createdSheetData.name,
           schemaVersion: change.schemaVersion,
           type: change.type
@@ -300,7 +302,7 @@ async function listAllIssues(endpoint: string, title: string) {
 
 async function createSheet(change: Change, title: string): Promise<any> {
   const requestBody = {
-    change: change.database,
+    change: change.target,
     title,
     content: Buffer.from(change.content).toString('base64')
   }
@@ -416,7 +418,7 @@ async function updateIssuePlan(
       let matchedSpec
       for (const change of changes) {
         if (
-          change.database == spec.changeDatabaseConfig.target &&
+          change.target == spec.changeDatabaseConfig.target &&
           change.id == spec.id
         ) {
           matchedSpec = spec
@@ -447,7 +449,7 @@ async function updateIssuePlan(
     for (const spec of step.specs) {
       for (const change of changes) {
         if (
-          change.database == spec.changeDatabaseConfig.target &&
+          change.target == spec.changeDatabaseConfig.target &&
           change.id == spec.id
         ) {
           const components = spec.changeDatabaseConfig.sheet.split('/')
