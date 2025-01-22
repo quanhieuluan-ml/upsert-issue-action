@@ -42,13 +42,11 @@ default change type is schema change.
 name: Upsert Migration
 
 on:
-  pull_request_review:
-    types: [submitted]
-  # pull_request:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - "**/*.sql"
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed # Triggers when a pull request is closed
 
 jobs:
   bytebase-upsert-migration:
