@@ -51,10 +51,7 @@ on:
 jobs:
   bytebase-upsert-migration:
     runs-on: ubuntu-latest
-    # Runs only if PR is approved and target branch is main
-    if:
-      github.event.review.state == 'approved' &&
-      github.event.pull_request.base.ref == 'main'
+    if: github.event.pull_request.merged == true
     env:
       BYTEBASE_URL: 'https://bytebase-ci.zeabur.app'
       BYTEBASE_SERVICE_ACCOUNT: 'ci@service.bytebase.com'
