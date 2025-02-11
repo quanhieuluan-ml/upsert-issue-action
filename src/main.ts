@@ -180,7 +180,7 @@ async function createPlan(
       const createdSheetData = await createSheet(change, title)
       const spec = {
         id: change.id,
-        change_database_config: {
+        changeCatabaseConfig: {
           target: change.target,
           sheet: createdSheetData.name,
           schemaVersion: change.schemaVersion,
@@ -199,9 +199,9 @@ async function createPlan(
       ],
       title,
       description,
-      vcs_source: {
-        vcs_type: 'GITHUB',
-        pull_request_url: github.context.payload.pull_request?.html_url
+      vcsSource: {
+        vcsType: 'GITHUB',
+        pullRequestUrl: github.context.payload.pull_request?.html_url
       }
     }
 
@@ -267,7 +267,7 @@ async function listAllIssues(endpoint: string, title: string) {
     // Update the query parameters with the next_page_token if it exists
     const queryParams = new URLSearchParams()
     if (pageToken) {
-      queryParams.set('page_token', pageToken)
+      queryParams.set('pageToken', pageToken)
     }
 
     const response = await fetch(`${endpoint}?${queryParams}`, {
@@ -287,9 +287,9 @@ async function listAllIssues(endpoint: string, title: string) {
     // Combine the data from this page with the accumulated data
     const newData = accumulatedData.concat(filtered || [])
 
-    if (data.next_page_token) {
+    if (data.nextPageToken) {
       // If there's a next page, recurse with the new token and the combined data
-      return fetchPage(newData, data.next_page_token)
+      return fetchPage(newData, data.nextPageToken)
     } else {
       // If there's no next page, return the accumulated data
       return newData
@@ -499,7 +499,7 @@ async function updateIssuePlan(
   }
 
   if (updatePlan) {
-    const queryParams = new URLSearchParams({ update_mask: 'steps' })
+    const queryParams = new URLSearchParams({ updateMask: 'steps' })
     const planRes = await fetch(
       `${projectUrl}/plans/${planUid}?${queryParams}`,
       {
