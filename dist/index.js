@@ -33271,7 +33271,7 @@ async function listAllIssues(endpoint, title) {
 }
 async function createSheet(change, title) {
     const requestBody = {
-        change: change.target,
+        //change: change.target,
         title,
         content: Buffer.from(change.content).toString('base64')
     };

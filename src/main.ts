@@ -302,7 +302,7 @@ async function listAllIssues(endpoint: string, title: string) {
 
 async function createSheet(change: Change, title: string): Promise<any> {
   const requestBody = {
-    change: change.target,
+    //change: change.target,
     title,
     content: Buffer.from(change.content).toString('base64')
   }
