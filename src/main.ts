@@ -72,6 +72,7 @@ export async function run(): Promise<void> {
   // If found existing issue, then update if migration script changes.
   // Otherwise, create a new issue.
   if (issue) {
+    core.info('Found existed issue')
     if (issue.plan) {
       await updateIssuePlan(issue, changes, title)
     } else {
@@ -82,12 +83,15 @@ export async function run(): Promise<void> {
     const issueURL = `${url}/projects/${projectId}/issues/${issue.uid}`
     core.info('Visit ' + issueURL)
   } else {
+    core.info('Will create plan')
     // Create plan
     let plan = await createPlan(changes, title, description)
 
+    core.info('Will create rollout')
     // Create rollout
     let rollout = await createRollout(plan.name)
 
+    core.info('Will create issue')
     // Create issue
     issue = await createIssue(plan.name, rollout.name, title, description)
 
@@ -205,7 +209,7 @@ async function createPlan(
       }
     }
 
-    core.debug(
+    core.info(
       'Creating plan with request body: ' + JSON.stringify(requestBody, null, 2)
     )
 
@@ -343,7 +347,7 @@ async function createIssue(
       rollout: rolloutName
     }
 
-    core.debug(
+    core.info(
       'Creating issue with request body: ' +
         JSON.stringify(requestBody, null, 2)
     )
@@ -527,7 +531,7 @@ async function createRollout(planName: string): Promise<any> {
       plan: planName
     }
 
-    core.debug(
+    core.info(
       'Creating rollout with request body: ' +
         JSON.stringify(requestBody, null, 2)
     )
