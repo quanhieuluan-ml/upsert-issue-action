@@ -182,9 +182,6 @@ async function createPlan(
     // Populate the specs array with the desired structure, inserting each base64-encoded content
     for (const change of changes) {
       const createdSheetData = await createSheet(change, title)
-      core.info(
-        'Creating sheet with: ' + JSON.stringify(createdSheetData, null, 2)
-      )
       const spec = {
         id: change.id,
         changeCatabaseConfig: {
@@ -310,8 +307,8 @@ async function createSheet(change: Change, title: string): Promise<any> {
     content: Buffer.from(change.content).toString('base64')
   }
 
-  core.debug(change.file)
-  core.debug(
+  core.info(change.file)
+  core.info(
     'Creating sheet with request body: ' + JSON.stringify(requestBody, null, 2)
   )
 
