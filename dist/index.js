@@ -33194,11 +33194,7 @@ async function createPlan(changes, title, description) {
                 }
             ],
             title,
-            description,
-            vcsSource: {
-                vcsType: 'GITHUB',
-                pullRequestUrl: github.context.payload.pull_request?.html_url
-            }
+            description
         };
         core.info('Creating plan with request body: ' + JSON.stringify(requestBody, null, 2));
         const response = await fetch(`${projectUrl}/plans`, {

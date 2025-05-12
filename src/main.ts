@@ -202,11 +202,7 @@ async function createPlan(
         }
       ],
       title,
-      description,
-      vcsSource: {
-        vcsType: 'GITHUB',
-        pullRequestUrl: github.context.payload.pull_request?.html_url
-      }
+      description
     }
 
     core.info(
