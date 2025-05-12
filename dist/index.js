@@ -33177,7 +33177,7 @@ async function createPlan(changes, title, description) {
             const createdSheetData = await createSheet(change, title);
             const spec = {
                 id: change.id,
-                changeCatabaseConfig: {
+                changeDatabaseConfig: {
                     target: change.target,
                     sheet: createdSheetData.name,
                     schemaVersion: change.schemaVersion,
