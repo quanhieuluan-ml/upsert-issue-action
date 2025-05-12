@@ -182,6 +182,9 @@ async function createPlan(
     // Populate the specs array with the desired structure, inserting each base64-encoded content
     for (const change of changes) {
       const createdSheetData = await createSheet(change, title)
+      core.info(
+        'Creating sheet with: ' + JSON.stringify(createdSheetData, null, 2)
+      )
       const spec = {
         id: change.id,
         changeCatabaseConfig: {
